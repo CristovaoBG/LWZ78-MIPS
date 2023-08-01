@@ -72,134 +72,135 @@ encode:	#inicia variaveis
 	li $s6,0x101
 	li $s7,0
 	li $t8,0
-	#carrega endereco da string a ser printada na funcao que da load no arquivo e a chama
-	la $a0,strFileNameCod	#string a ser printada no getInputFile
+	# carrega endereco da string a ser printada na
+	# funcao que da load no arquivo e a chama
+	la $a0,strFileNameCod					# string a ser printada no getInputFile
 	jal getInputFile
-	move $s0,$v0		#$s0 = descritor do arquivo a ser codificado
-	#abre arquivo de output temporario (cada elemento[codigo ou caractere] sera formatado com 32 bits)
-	la $a0,tempOutputName	# prepara arquivo para escrever
-	li $a1,1		# flag = 1, arquivo para gravacao
-	jal openFile		# abre
-	move $t9,$v0		#$t9 = descritor do arquivo codificado de saida (OBS: nesta implementacao o $t9 nao e temporario)
-	#printa string dizendo que esta codificando
+	move $s0,$v0							# $s0 = descritor do arquivo a ser codificado
+	# abre arquivo de output temporario (cada elemento[codigo ou caractere] sera formatado com 32 bits)
+	la $a0,tempOutputName					# prepara arquivo para escrever
+	li $a1,1								# flag = 1, arquivo para gravacao
+	jal openFile							# abre
+	move $t9,$v0							# $t9 = descritor do arquivo codificado de saida (OBS: nesta implementacao o $t9 nao e temporario)
+	# printa string dizendo que esta codificando
 	la $a0,strCoding
 	jal printStr
-loop:	#loop principal do encode
+loop:										#loop principal do encode
 	move $a0,$s0
-	jal readCharFromFile	# le um caractere e salva em $v0
+	jal readCharFromFile					# le um caractere e salva em $v0
 	move $s2,$v0
-	beq $s2,'\0',endEncode	#finaliza se arquivo chegou ao fim
-	la $s4,string($s1)	#$t0=endereco ao final da string
-	sb $s2,($s4)		#concatena string + c
-	jal strWithCharInTable	#$v0=1 se sim
+	beq $s2,'\0',endEncode					# finaliza se arquivo chegou ao fim
+	la $s4,string($s1)						# $t0=endereco ao final da string
+	sb $s2,($s4)							# concatena string + c
+	jal strWithCharInTable					# $v0=1 se sim
 	beqz $v0,notInTable
-#inTable: caso string esteja na tabela, salva codigo, incrementa cursor da string e volta ao loop
-	move $s3,$v1		#salva codigo da string encontrada na tabela
-	addi $s1,$s1,1  	#incrementa cursor da string
+# inTable: caso string esteja na tabela, salva codigo, incrementa cursor da string e volta ao loop
+	move $s3,$v1							# salva codigo da string encontrada na tabela
+	addi $s1,$s1,1  						# incrementa cursor da string
 	j loop
 notInTable: #caso a string nao esteja na tabela
 	li $t0,'\0'
-	sb $t0,($s4)		#remove c do fim da string
-	#imprime na saida o codigo correspondente a string
-	move $a3,$s3		#prapara codigo da str ($s3) para ser salvo no output
-	la $a2,outputBuf	#endereco inicial do output
-	move $a1,$s5		#posicao ao final do output
-	jal setData32 		#grava
-	#imprime na saida o caractere c
-	addi $a1,$a1,1		#incrementa cursor do output (diretamente no argumento para agilizar)
-	move $a3,$s2		#prepara c (caractere)
+	sb $t0,($s4)							# remove c do fim da string
+	# imprime na saida o codigo correspondente a string
+	move $a3,$s3							# prapara codigo da str ($s3) para ser salvo no output
+	la $a2,outputBuf						# endereco inicial do output
+	move $a1,$s5							# posicao ao final do output
+	jal setData32 							# grava
+	# imprime na saida o caractere c
+	addi $a1,$a1,1							# incrementa cursor do output (diretamente no argumento para agilizar)
+	move $a3,$s2							# prepara c (caractere)
 	jal setData32
-	addi $s5,$s5,2		#incrementa cursor do output para proximo loop (dois dados foram adicionados)
-	addi $s3,$zero,0x100	#redefine codigo para o default
-	#verifica se os dados em bits sao multiplos de um conjunto de bytes, se sim, escreve no arquivo de saida e limpa output (zera cursor)
-	bne $s5,8,contNIT	# s5 contem o numero de elementos na saida.(oito elementos de BIT_SIZE bits = 8*BIT_SIZE bits, ou seja, poderemos escrever BS bytes na saida)
-	#escreve BIT_SIZE bytes (8*BIT_SIZE bits) no arquivo de saida e limpa output (zera cursor)
-	move $a0,$t9		#$a0 = descritor
-	la $a1,outputBuf	#$a1 = endereco do vetor a ser escrito
-	li $a2,BIT_SIZE		#$a2 = quantidade de bytes a serem escritos
-	jal appendBytesToFile	#escreve BIT_SIZE bytes no arquivo de saida (obs: arquivo temporario ainda)
-	li $s5,0		#reseta cursor do outputBuf
-	#verifica se cabe na tabela. Usaria   ($s7+$s1+1)*BIT_SIZE   bits, ou seja (nº_elem_da_tabela + str_size + 1)*BIT_SIZE, e isso deve ser menor que TABLE_SIZE*8.
-contNIT:bnez $t8,endLStr 	#salta se a flag de tabela cheia ja tiver setada
-	add $t0,$s7,$s1		#num_elem_da_tabela + str_size
+	addi $s5,$s5,2							# incrementa cursor do output para proximo loop (dois dados foram adicionados)
+	addi $s3,$zero,0x100					# redefine codigo para o default
+	# verifica se os dados em bits sao multiplos de um conjunto de bytes, se sim, escreve no arquivo de saida e limpa output (zera cursor)
+	bne $s5,8,contNIT						# s5 contem o numero de elementos na saida.(oito elementos de BIT_SIZE bits = 8*BIT_SIZE bits, ou seja, poderemos escrever BS bytes na saida)
+	# escreve BIT_SIZE bytes (8*BIT_SIZE bits) no arquivo de saida e limpa output (zera cursor)
+	move $a0,$t9							# $a0 = descritor
+	la $a1,outputBuf						# $a1 = endereco do vetor a ser escrito
+	li $a2,BIT_SIZE							# $a2 = quantidade de bytes a serem escritos
+	jal appendBytesToFile					# escreve BIT_SIZE bytes no arquivo de saida (obs: arquivo temporario ainda)
+	li $s5,0								# reseta cursor do outputBuf
+
+	# verifica se cabe na tabela. Usaria($s7+$s1+1)*BIT_SIZE   bits,
+	# ou seja (nº_elem_da_tabela + str_size + 1)*BIT_SIZE, e isso deve
+	# ser menor que TABLE_SIZE*8.
+contNIT:bnez $t8,endLStr 					# salta se a flag de tabela cheia ja tiver setada
+	add $t0,$s7,$s1							# num_elem_da_tabela + str_size
 	addi $t0,$t0,1
-	mul $t0,$t0,BIT_SIZE	#tamanho que ficaria a tabela em bits
+	mul $t0,$t0,BIT_SIZE					# tamanho que ficaria a tabela em bits
 	li $t1,TABLE_SIZE
-	mul $t1,$t1,8		#tamanho maximo da tabela em bits
-	sle $t8,$t1,$t0		#ativa flag informando que nao cabe mais na tabela se o tamanho da tabela ultrapassar o maximo
-	bnez $t8,cleanStr	#salta se ativou a flag acima
+	mul $t1,$t1,8							# tamanho maximo da tabela em bits
+	sle $t8,$t1,$t0							# ativa flag informando que nao cabe mais na tabela se o tamanho da tabela ultrapassar o maximo
+	bnez $t8,cleanStr						# salta se ativou a flag acima
 	#cria codigo para string na tabela
-	la $a2,tabela	#carrega endereco da tabela
-	move $a1,$s7	#posiciona $a1 no fim da tabela
-	move $a3,$s6	#prepara codigo da string a ser escrito na tabela
-	addi $s6,$s6,1	#novo codigo que sera associado a proxima string (do proximo loop)
-	jal setData32	#salva na tabela codigo correspondente a string que concatena com a atual
-	addi $s7,$s7,1	#atualiza cursor da tabela
+	la $a2,tabela							#carrega endereco da tabela
+	move $a1,$s7							#posiciona $a1 no fim da tabela
+	move $a3,$s6							#prepara codigo da string a ser escrito na tabela
+	addi $s6,$s6,1							#novo codigo que sera associado a proxima string (do proximo loop)
+	jal setData32							#salva na tabela codigo correspondente a string que concatena com a atual
+	addi $s7,$s7,1							#atualiza cursor da tabela
 	#escreve string na tabela
-	move $a1,$s7	#posiciona na posicao para escrever string na tabela
-	li $s1,0	#zera cursor da string
-	lbu $a3,string($0)	#primeiro caractere da string a ser escrito na tabela
-	beq $a3,'\0',contEN	#salta direto pra escrever caractere se a string nao contiver nenhum caractere
-lWriteStr:#loop para escrever string na tabela
-	jal setData32	#salva caractere da string na tabela
-	addi $s7,$s7,1	#incrementa cursor da tabela
-	move $a1,$s7	#poe no argumento da setData
-	addi $s1,$s1,1	#incrementa cursor da string
-	lbu $a3,string($s1)	#caractere da string a ser escrito na tabela
-	bne $a3,'\0',lWriteStr	#salta e escreve ate que se encontre o fim da string
-contEN:	#concatena caractere a tabela
+	move $a1,$s7							#posiciona na posicao para escrever string na tabela
+	li $s1,0								#zera cursor da string
+	lbu $a3,string($0)						#primeiro caractere da string a ser escrito na tabela
+	beq $a3,'\0',contEN						#salta direto pra escrever caractere se a string nao contiver nenhum caractere
+lWriteStr:									#loop para escrever string na tabela
+	jal setData32							#salva caractere da string na tabela
+	addi $s7,$s7,1							#incrementa cursor da tabela
+	move $a1,$s7							#poe no argumento da setData
+	addi $s1,$s1,1							#incrementa cursor da string
+	lbu $a3,string($s1)						#caractere da string a ser escrito na tabela
+	bne $a3,'\0',lWriteStr					#salta e escreve ate que se encontre o fim da string
+contEN:										# concatena caractere a tabela
 	move $a3,$s2
 	jal setData32
 	addi $s7,$s7,1
-cleanStr:#limpa string
+cleanStr:									# limpa string
 	li $t1,'\0'	
-	sb $t1,string($s1)		#limpa posicao ao final da string
+	sb $t1,string($s1)						# limpa posicao ao final da string
 	beqz $s1,endLStr	
-	addi $s1,$s1,-1		#decrementa cursor
+	addi $s1,$s1,-1							# decrementa cursor
 	j cleanStr
-endLStr:li $s1,0	#zera cursor da string (pois pode ser chamada por contNit)
+endLStr:li $s1,0							# zera cursor da string (pois pode ser chamada por contNit)
 	j loop
-endEncode:#faz ultimos procedimentos na saida
-	#imprime na saida o codigo correspondente a string
-	move $a3,$s3	#prapara codigo da str ($s3) para ser salvo no output
-	la $a2,outputBuf	#endereco inicial do output
-	move $a1,$s5	#posicao ao final do output
-	jal setData32 	#grava	#setData: #salva dado K=$a3 de tamanho T(em bits)=$a0 na posicao P=$a1 a partir to endereco Po=$a2
-	#imprime na saida o caractere nulo
-	addi $a1,$a1,1	#incrementa cursor do output (diretamente no argumento para agilizar)
-	li $a3,'\0'	#prepara caractere nulo
+endEncode:									# faz ultimos procedimentos na saida
+	# imprime na saida o codigo
+	# correspondente a string
+	move $a3,$s3							# prapara codigo da str ($s3) para ser salvo no output
+	la $a2,outputBuf						# endereco inicial do output
+	move $a1,$s5							# posicao ao final do output
+	jal setData32 							# grava	#setData: #salva dado K=$a3 de tamanho T(em bits)=$a0 na posicao P=$a1 a partir to endereco Po=$a2
+	# imprime na saida o caractere nulo
+	addi $a1,$a1,1							# incrementa cursor do output (diretamente no argumento para agilizar)
+	li $a3,'\0'								# prepara caractere nulo
 	jal setData32
-	addi $s5,$s5,2	#incrementa cursor do output para proximo loop (dois dados foram adicionados)	
-	#escreve no arquivo
-	move $a0,$t9		#$a0 = descritor
-	la $a1,outputBuf	#$a1 = endereco do vetor a ser escrito
-	mul $a2,$s5,4		#quantidade de bytes a serem escritos (byte*4=word)
+	addi $s5,$s5,2							# incrementa cursor do output para proximo loop (dois dados foram adicionados)	
+	# escreve no arquivo
+	move $a0,$t9							# $a0 = descritor
+	la $a1,outputBuf						# $a1 = endereco do vetor a ser escrito
+	mul $a2,$s5,4							# quantidade de bytes a serem escritos (byte*4=word)
 	jal appendBytesToFile
-	#fecha arquivos
+	# fecha arquivos
 	move $a0,$s0
-	jal closeFile	#fecha arquivo origem
+	jal closeFile							# fecha arquivo origem
 	move $a0,$t9
-	jal closeFile	#fecha arquivo destino (temporario)
+	jal closeFile							# fecha arquivo destino (temporario)
 
-#preFormat: prepara ormata para representar o codigo com o minimo numero de bits
-	#calcula quantidade minima de simbolos a ser usada
-	addi $t1,$s6,-257	#$s6 = quantidade de simbolos usada - 1
-	li $t0,0
-getLen:	#numero de bits necessarios para representar todos os simbolos
+getLen:	 									# numero de bits necessarios para representar todos os simbolos
 	beqz $t1,contGL
-	srl $t1,$t1,1		#desloca para contar os bits necessarios (1 por loop)
-	addi $t0,$t0,1		#conta os loops
+	srl $t1,$t1,1							# desloca para contar os bits necessarios (1 por loop)
+	addi $t0,$t0,1							# conta os loops
 	j getLen
-contGL:	move $s0,$t0		#salva em $s0 a quantidade de bits necessaria para dar encode
-	#formata nome do arquivo e adiciona .lzw ao final (FFN = format file name)
+contGL:	move $s0,$t0						# salva em $s0 a quantidade de bits necessaria para dar encode
+											# formata nome do arquivo e adiciona .lzw ao final (FFN = format file name)
 	la $t0,fileName
-	#posiciona $t0 no fim do nome
+	# posiciona $t0 no fim do nome
 loopFFN:lbu $t1,0($t0)	
 	beq $t1,'\n',contFFN
 	beq $t1,'\0',contFFN
 	addi $t0,$t0,1
 	j loopFFN
-contFFN:#adiciona .lzw ao fim da string
+contFFN:									# adiciona .lzw ao fim da string
 	li $t1,'.'	
 	sb $t1,0($t0)
 	addi $t0,$t0,1
@@ -211,129 +212,135 @@ contFFN:#adiciona .lzw ao fim da string
 	addi $t0,$t0,1
 	li $t1,'w'
 	sb $t1,0($t0)
-	#cria lzw de saida
-	la $a0,fileName		# prepara para criar arquivo lzw de saida
-	li $a1,1		# flag = 1, arquivo para gravacao
+	# cria lzw de saida
+	la $a0,fileName							# prepara para criar arquivo lzw de saida
+	li $a1,1								# flag = 1, arquivo para gravacao
 	jal openFile
 	move $s2,$v0
-	#abre temporario para reformatar
-	la $a0,tempOutputName	# reabre arquivo temporario 
-	li $a1,0		# flag = 0, arquivo para leitura
-	jal openFile		#flag: 0=read-only, 1=write-only,9=write-only with create and append	#$a0 = enderecoNome, $a1=flag
-	move $s1,$v0		#$v1 eh o descritor do arquivo temporario
+	# abre temporario para reformatar
+	la $a0,tempOutputName					# reabre arquivo temporario 
+	li $a1,0								# flag = 0, arquivo para leitura
+	jal openFile							# flag: 0=read-only, 1=write-only,9=write-only with create and append	#$a0 = enderecoNome, $a1=flag
+	move $s1,$v0							# $v1 eh o descritor do arquivo temporario
 	
 #	    /--------------------/	
 #	  /   	  FORMAT        /
 #	/______________________/
-	#$s0 = minimo de bytes para representar o codigo	
-	#$s1 = descritor do input (arquivo temporario)
-	#$s2 = descritor do output (saida, arquivo comprimido final)
-	#$s3 = cursor do buffer (Eh a posicao dos elementos de tamanho BIT_SIZE)
-	#$s4 = cursor do buffer2 (Eh a posicao em bits)
-	#$s5 = contador de loops dos buffers
-	#$s6 = flag de saida
-	#escreve string de escrevendo saida
+
+	# $s0 = minimo de bytes para representar o codigo	
+	# $s1 = descritor do input (arquivo temporario)
+	# $s2 = descritor do output (saida, arquivo comprimido final)
+	# $s3 = cursor do buffer (Eh a posicao dos elementos de tamanho BIT_SIZE)
+	# $s4 = cursor do buffer2 (Eh a posicao em bits)
+	# $s5 = contador de loops dos buffers
+	# $s6 = flag de saida
+	# escreve string de escrevendo saida
+
 	la $a0,strOutputing
 	jal printStr
-	#escreve o valor de bits minimo no primeiro byte do arquivo de saida (ESSENCIAL PARA A DECODIFICACAO)
-	sb $s0,tempBuffer	#grava byte a ser escrito em tempBuffer
-	move $a0,$s2		#descritor (destino)
-	la $a1,tempBuffer	#origem
-	li $a2,1		#bytes a serem escritos
+	# escreve o valor de bits minimo no primeiro byte do arquivo de saida (ESSENCIAL PARA A DECODIFICACAO)
+	sb $s0,tempBuffer					# grava byte a ser escrito em tempBuffer
+	move $a0,$s2						# descritor (destino)
+	la $a1,tempBuffer					# origem
+	li $a2,1							# bytes a serem escritos
 	jal appendBytesToFile
-	#inicializa variaveis salvas
+	# inicializa variaveis salvas
 	li $s3,0
 	li $s4,0
 	li $s5,0
-	#carrega BIT_SIZE bytes para o buffer
-loopArqC:move $a0,$s1		#descritor (origem)
-	la $a1,tempBuffer	#destino
+
+	# carrega BIT_SIZE bytes para o buffer
+loopArqC:move $a0,$s1			# descritor (origem)
+	la $a1,tempBuffer			# destino
 	li $t0,BIT_SIZE	
-	addi $t0,$t0,BIT_SIZE	#numero de caracteres a ler
-	move $a2,$t0		#$a2= 2 x BIT_SIZE
-	jal readBytesFromFile	#$a0 = descritor, $a1 = buffer, $a2 = numero de caracteres a ler
+	addi $t0,$t0,BIT_SIZE		# numero de caracteres a ler
+	move $a2,$t0				# $a2= 2 x BIT_SIZE
+	jal readBytesFromFile		# $a0 = descritor, $a1 = buffer, $a2 = numero de caracteres a ler
 	beq $v0,1,cleanBf2
-	# le prox elemento (de tamanho BIT_SIZE) do buffer e escreve (com o tamanho $s0) em buffer2, pois é codigo
-loopBufC:move $a1,$s3		#cursor do buffer
+
+	# le prox elemento (de tamanho BIT_SIZE)
+	# do buffer e escreve (com o tamanho $s0)
+	# em buffer2, pois é codigo
+loopBufC:move $a1,$s3				# cursor do buffer
 	la $a2,tempBuffer
-	jal getData32		#T(em bits)=$a0 na posicao P=$a1 a partir to endereco Po=$a2 e salva em $v0
+	jal getData32					# T(em bits)=$a0 na posicao P=$a1 a partir to endereco Po=$a2 e salva em $v0
 	beqz $v0,finalTouchesFMT		#salta e escreve ultimos bytes
-	addi $s3,$s3,1		#incrementa cursor do buffer
-	#prepara para escrever em buffer2 ($s0 bits) 
+	addi $s3,$s3,1					# incrementa cursor do buffer
+	# prepara para escrever em buffer2 ($s0 bits) 
 	addi $t0,$v0,-0x100
-	move $a3,$t0		#v0 contem um codigo
-	move $a0,$s0		#codificar com $s0 bits
-	move $a1,$s4		#posicao (cursor em bits)
+	move $a3,$t0					# v0 contem um codigo
+	move $a0,$s0					# codificar com $s0 bits
+	move $a1,$s4					# posicao (cursor em bits)
 	la $a2,tempBuffer2
-	jal setDataBit		#escreve em tempBuffer o codigo de tamanho $s0
-	add $s4,$s4,$s0		#incrementa cursor do buffer2
-	#le mais um elemento (de tamanho BIT_SIZE) do buffer e escreve (com tamanho 8) em buffer 2, pois é caractere
-	move $a1,$s3		#cursor do buffer
+	jal setDataBit					# escreve em tempBuffer o codigo de tamanho $s0
+	add $s4,$s4,$s0					# incrementa cursor do buffer2
+	# le mais um elemento (de tamanho BIT_SIZE) do buffer e escreve (com tamanho 8) em buffer 2, pois é caractere
+	move $a1,$s3					# cursor do buffer
 	la $a2,tempBuffer
 	jal getData32
-	addi $s3,$s3,1		#incrementa cursor do buffer
-	#prepara para escrever caractere no buffer2 (8 bits)
-	move $a3,$v0		#v0 contem um caractere
-	li $a0,8		#codificar com oito bits
-	move $a1,$s4		#posicao (cursor em bits)
+	addi $s3,$s3,1					# incrementa cursor do buffer
+	# prepara para escrever caractere no buffer2 (8 bits)
+	move $a3,$v0					# v0 contem um caractere
+	li $a0,8						# codificar com oito bits
+	move $a1,$s4					# posicao (cursor em bits)
 	la $a2,tempBuffer2
-	jal setDataBit		#escreve em tempBuffer o codigo de tamanho $s0
-	addi $s4,$s4,8		#incrementa cursor do buffer2
-	#repete oito vezes (loopBufC)
-	addi $s5,$s5,1	#incrementa contador de loops
+	jal setDataBit					# escreve em tempBuffer o codigo de tamanho $s0
+	addi $s4,$s4,8					# incrementa cursor do buffer2
+	# repete oito vezes (loopBufC)
+	addi $s5,$s5,1					# incrementa contador de loops
 	li $t0,8
-	bne $s5,$t0,loopBufC	#salta se ainda nao completou oito loops
-	#fim doS loopS dos buffers
-	li $s3,0	#reinicia cursor do buffer
-	li $s4,0	#reinicia cursor do buffer2
-	li $s5,0	#reinicia contador de loop dos buffers
-	#adiciona bytes do buffer2 ao arquivo de output
-#	addi $t0,$s0,8		#calcula quantos bytes serao escritos (numero de bytes do codigo + 8)
-eofFMT:	move $a0,$s2		#descritor (destino)
-	la $a1,tempBuffer2	#origem
-	addi $a2,$s0,8		#bytes a serem escritos
+	bne $s5,$t0,loopBufC			# salta se ainda nao completou oito loops
+	# fim doS loopS dos buffers
+	li $s3,0						# reinicia cursor do buffer
+	li $s4,0						# reinicia cursor do buffer2
+	li $s5,0						# reinicia contador de loop dos buffers
+	# adiciona bytes do buffer2 ao arquivo de output
+#	addi $t0,$s0,8					# calcula quantos bytes serao escritos (numero de bytes do codigo + 8)
+eofFMT:	move $a0,$s2				# descritor (destino)
+	la $a1,tempBuffer2				# origem
+	addi $a2,$s0,8					# bytes a serem escritos
 	jal appendBytesToFile
-	#repete varias vezes(loopArqC)
+	# repete varias vezes(loopArqC)
 	bne $s6,1,loopArqC
-	#fim do procedimento de formatacao
+	# fim do procedimento de formatacao
 	j endForm
-finalTouchesFMT: #escreve o numero de bytes que faltam ser escritos
-	#coloca bits vazios no fim de buffer2
-	li $a3,0		#vai escrever 'vazio'
-	li $a0,9		#codificar com um numero relativamente grande (nove bits de valor zero)
-	move $a1,$s4		#posicao (cursor em bits)
+finalTouchesFMT: 					# escreve o numero de bytes que faltam ser escritos
+	# coloca bits vazios no fim de buffer2
+	li $a3,0						# vai escrever 'vazio'
+	li $a0,9						# codificar com um numero relativamente grande (nove bits de valor zero)
+	move $a1,$s4					# posicao (cursor em bits)
 	la $a2,tempBuffer2
-	jal setDataBit		#escreve em tempBuffer	
-	#calcula quantos bytes realmente devem ser escritos
+	jal setDataBit					# escreve em tempBuffer	
+	# calcula quantos bytes realmente devem ser escritos
 	li $t0,8	
-	div $s4,$t0	#quantos bits tem dividido por oito = quantos bytes + resto
+	div $s4,$t0						# quantos bits tem dividido por oito = quantos bytes + resto
 	mflo $t0
-	addi $t0,$t0,1	#para englobar o resto, caso exista (bem provavel)
-	#escreve no arquivo
-	move $a2,$t0		#bytes a serem escritos
-	move $a0,$s2		#descritor (destino)
-	la $a1,tempBuffer2	#origem	
+	addi $t0,$t0,1					# para englobar o resto, caso exista (bem provavel)
+	# escreve no arquivo
+	move $a2,$t0					# bytes a serem escritos
+	move $a0,$s2					# descritor (destino)
+	la $a1,tempBuffer2				# origem	
 	jal appendBytesToFile
-	#fim do procedimento de formatacao	
+	# fim do procedimento de formatacao	
 	j endForm
-cleanBf2:move $s6,$v0		#$s6 = 1 se chegou ao fim do arquivo, flag para sair do loop (colocado aqui para ralizar menos vezes)
-	addi $t1,$s2,8		#bytes a serem apagados (numero de bytes do codigo + 8)
-	li $t2,'\0'		#carega caracter nulo
+cleanBf2:move $s6,$v0				# $s6 = 1 se chegou ao fim do arquivo, flag para sair do loop (colocado aqui para ralizar menos vezes)
+	addi $t1,$s2,8					# bytes a serem apagados (numero de bytes do codigo + 8)
+	li $t2,'\0'						# carega caracter nulo
 loopCBf2:sb $t2,tempBuffer2($t1)
 	beq $t1,0,endCBf2
 	addi $t1,$t1,-1
 	j loopCBf2
 endCBf2:j loopBufC
-endForm:#fecha arquivos
-	move $a0,$s1	#descritor do input
+endForm:							# fecha arquivos
+	move $a0,$s1					# descritor do input
 	jal closeFile
-	move $a0,$s2	#descritor do output
+	move $a0,$s2					# descritor do output
 	jal closeFile
-	#cria arquivo do dicionario
+	# cria arquivo do dicionario
 	la $a0,strCreatingDict
 	jal printStr
 	jal createDictFile
-	#imprime string de finalizacao e sai
+	# imprime string de finalizacao e sai
 	la $a0,strDone
 	jal printStr
 	j exit
@@ -344,59 +351,62 @@ strWithCharInTable: #compara caracteres um a um, os chars 8 bits da string com o
 	#$s2,$s3  = caractere atual da tabela e da string
 	#$s1	 = codigo da atual comparacao
 	#$v0,v1	 = retorno (diz se achou ou nao na tabela) e valor do codigo (correspondente ao match)
-	addi $sp,$sp,-28# cria espaços para variaveis na pilha
+
+	addi $sp,$sp,-28					# cria espaços para variaveis na pilha
 	sw $s2,24($sp)
 	sw $s3,20($sp)
 	sw $ra,16($sp)	
 	sw $s0,12($sp)
 	sw $s1,8($sp)
 	sw $a1,4($sp)
-	sw $a2,0($sp)	# empilha variaveis
-	#inicializa variaveis
-	addi $s0,$zero,0	#inicializa $s0 = cursor da string
-	addi $a1,$zero,0	#cursor do dado da tabela a ser lido (o primeiro é sempre um codigo), sera usado por getData
-	la $a2,tabela		#endereco da tabela
-	jal getData32		#recebe primeiro codigo da tabela     #T(em bits)=$a0 ,P=$a1, Po=$a2,$v0=out
-	addi $a1,$a1,1		#incrementa cursor da tabela para posicionar no primeiro caractere (da tabela)
-	move $s1,$v0		#salva codigo em $s1
-	#inicia loop de comparacao
-loopSW:	lbu $s2,string($s0)	#le caractere da string
-	seq $s3,$s2,'\0'	#salta (*) se for fim da string(falta verificar se a string da tabela tambem acabou pra retornar verdadeiro)
-	addi $s0,$s0,1		#incrementa cursor da string para proximo loop
-	jal getData32		#le caractere da tabela
-	bnez $s3,exitTrue	# continuacao de (*), salta se for fim da string
-	beq $v0,'\0',exitFalse	#verifica se fim de dados na tabela, se sim, retorna falso
-	addi $a1,$a1,1		#incrementa posicao da tabela a ser lida para proximo loop
-	#verifica se dado da tabela lido eh codigo
+	sw $a2,0($sp)						# empilha variaveis
+
+	# inicializa variaveis
+	addi $s0,$zero,0					# inicializa $s0 = cursor da string
+	addi $a1,$zero,0					# cursor do dado da tabela a ser lido (o primeiro é sempre um codigo), sera usado por getData
+	la $a2,tabela						# endereco da tabela
+	jal getData32						# recebe primeiro codigo da tabela     #T(em bits)=$a0 ,P=$a1, Po=$a2,$v0=out
+	addi $a1,$a1,1						# incrementa cursor da tabela para posicionar no primeiro caractere (da tabela)
+	move $s1,$v0						# salva codigo em $s1
+
+	# inicia loop de comparacao
+loopSW:	lbu $s2,string($s0)				# le caractere da string
+	seq $s3,$s2,'\0'					# salta (*) se for fim da string(falta verificar se a string da tabela tambem acabou pra retornar verdadeiro)
+	addi $s0,$s0,1						# incrementa cursor da string para proximo loop
+	jal getData32						# le caractere da tabela
+	bnez $s3,exitTrue					# continuacao de (*), salta se for fim da string
+	beq $v0,'\0',exitFalse				# verifica se fim de dados na tabela, se sim, retorna falso
+	addi $a1,$a1,1						# incrementa posicao da tabela a ser lida para proximo loop
+	# verifica se dado da tabela lido eh codigo
 	li $t1,0x100
-	slt $t1,$v0,$t1		#$t0 = true se $v0 for caractere
-	bne $t1,$zero,contSW	#salta se $v0 for caractere
-	#se for codigo, salva o codigo novo e zera cursor da string e posiciona cursor da tabela para prox caractere e retorna ao loop
-	move $s1,$v0		#salva codigo atual
-	addi $s0,$zero,0	#zera cursor da string
-	j loopSW		#recomeca processo de comparacao a partir do novo codigo
-contSW:	#se nao for codigo, continua
-	beq $v0,$s2,loopSW	#compara caractere da tabela com o da string, se for igual volta ao loop para verificar os proximos
-notEqual:addi $s0,$zero,0	#zera cursor da string
-	#pega proximo codigo (e posiciona cursor $a1 sobre o primeiro caractere seguinte)
-loopSW2:jal getData32		#le tabela
-	beq $v0,'\0',exitFalse	#se atingir o fim da tabela retorna falso
-	addi $a1,$a1,1		#incrementa posicao da tabela a ser lida para proximo loop
-	move $s1,$v0		#salva codigo(se nao for codigo será sobreescrito eventualmente)
+	slt $t1,$v0,$t1						# $t0 = true se $v0 for caractere
+	bne $t1,$zero,contSW				# salta se $v0 for caractere
+	# se for codigo, salva o codigo novo e zera cursor da string e posiciona cursor da tabela para prox caractere e retorna ao loop
+	move $s1,$v0						# salva codigo atual
+	addi $s0,$zero,0					# zera cursor da string
+	j loopSW							# recomeca processo de comparacao a partir do novo codigo
+contSW:									# se nao for codigo, continua
+	beq $v0,$s2,loopSW					# compara caractere da tabela com o da string, se for igual volta ao loop para verificar os proximos
+notEqual:addi $s0,$zero,0				# zera cursor da string
+# pega proximo codigo (e posiciona cursor $a1 sobre o primeiro caractere seguinte)
+loopSW2:jal getData32					# le tabela
+	beq $v0,'\0',exitFalse				# se atingir o fim da tabela retorna falso
+	addi $a1,$a1,1						# incrementa posicao da tabela a ser lida para proximo loop
+	move $s1,$v0						# salva codigo(se nao for codigo será sobreescrito eventualmente)
 	addi $t1,$zero,0x100
-	slt $t1,$v0,$t1		#$t0 = true se $v0 for caractere
-	beq $t1,$zero,loopSW	#salta se $v0 for codigo (recomeca com $a1 posicionado sobre os caracteres do prox codigo)
+	slt $t1,$v0,$t1						# $t0 = true se $v0 for caractere
+	beq $t1,$zero,loopSW				# salta se $v0 for codigo (recomeca com $a1 posicionado sobre os caracteres do prox codigo)
 	j loopSW2
-exitFalse:addi $v0,$zero,0		# retorna verdadeiro (esta na tabela)
+exitFalse:addi $v0,$zero,0				# retorna verdadeiro (esta na tabela)
 	addi $v1,$zero,0
 	j exitSW
 exitTrue:beq $v0,'\0',contET
 	li $t1,0x100
-	slt $t1,$v0,$t1		#$t0 = true se $v0 for caractere
-	bne $t1,$zero,exitFalse	#salta se $v0 for caractere
-contET:	addi $v0,$zero,1	# retorna verdadeiro (esta na tabela)
-	move $v1,$s1		# retorna codigo correspondente ao match
-exitSW:	#desempilha
+	slt $t1,$v0,$t1						# $t0 = true se $v0 for caractere
+	bne $t1,$zero,exitFalse				# salta se $v0 for caractere
+contET:	addi $v0,$zero,1				# retorna verdadeiro (esta na tabela)
+	move $v1,$s1						# retorna codigo correspondente ao match
+exitSW:									# desempilha
 	lw $a2,0($sp)
 	lw $a1,4($sp)
 	lw $s1,8($sp)
@@ -404,12 +414,13 @@ exitSW:	#desempilha
 	lw $ra,16($sp)
 	lw $s2,24($sp)
 	lw $s3,20($sp)
-	addi $sp,$sp,28 # libera pilha
+	addi $sp,$sp,28 					# libera pilha
 	jr $ra
 
 #	    /-------------------/	
 #	  /   	DECODE          /
 #	/______________________/
+
 decode:	#$s0 = numero de bits usados para codificar o dicionario do arquivo
 	#$s1 = decritor do arquivo a ser decodificado
 	#$s2  = descritor do arquivo de saida (descomprimido)
@@ -420,147 +431,150 @@ decode:	#$s0 = numero de bits usados para codificar o dicionario do arquivo
 	#$s7 = contador de loops do buffer
 	#$t9 = cursor da tabela
 	#inicializa variaveis
+
 	li $s4,0
 	li $s7,0	
-	#imprime string no terminal
-	la $a0,strFileNameDec	#string a ser printada
+	# imprime string no terminal
+	la $a0,strFileNameDec					# string a ser printada
 	jal getInputFile
-	move $s1,$v0		#$s1 = descritor do arquivo a ser decodificado
-	#posiciona cursor no fim da string
+	move $s1,$v0							# $s1 = descritor do arquivo a ser decodificado
+	# posiciona cursor no fim da string
 	li $a0,0
-	li $t0,0		#cursor
-lDecNm:	lbu $t1,fileName($t0)	#le caractere
-	beq $t1,'\n',contDecNm	#salta se fim
-	beq $t1,'\0',contDecNm	#salta se fim
-	addi $t0,$t0,1		#incrementa cursor
+	li $t0,0								# cursor
+lDecNm:	lbu $t1,fileName($t0)				# le caractere
+	beq $t1,'\n',contDecNm					# salta se fim
+	beq $t1,'\0',contDecNm					# salta se fim
+	addi $t0,$t0,1							# incrementa cursor
 	j lDecNm
-contDecNm: #verifica se é do tipo lzw e apaga tres ultimos valores
-	li $t2,'\0'		#pata substituir os caracteres ao final (.lzw)
-	addi $t0,$t0,-1		#posiciona cursor sobre ultimo caractere valido
-	lbu $t1,fileName($t0)	#le
-	bne $t1,'w',notLzw	#verifica
-	sb $t2,fileName($t0)	#apaga
-	addi $t0,$t0,-1		#decrementa cursor
-	lbu $t1,fileName($t0)	#le
-	bne $t1,'z',notLzw	#verifica
-	sb $t2,fileName($t0)	#apaga
-	addi $t0,$t0,-1		#decrementa cursor
-	lbu $t1,fileName($t0)	#le
-	bne $t1,'l',notLzw	#verifica
-	sb $t2,fileName($t0)	#apaga
-	addi $t0,$t0,-1		#decrementa cursor
-	lbu $t1,fileName($t0)	#le
-	bne $t1,'.',notLzw	#verifica
-	sb $t2,fileName($t0)	#apaga
+contDecNm: 									# verifica se é do tipo lzw e apaga tres ultimos valores
+	li $t2,'\0'								# pata substituir os caracteres ao final (.lzw)
+	addi $t0,$t0,-1							# posiciona cursor sobre ultimo caractere valido
+	lbu $t1,fileName($t0)					# le
+	bne $t1,'w',notLzw						# verifica
+	sb $t2,fileName($t0)					# apaga
+	addi $t0,$t0,-1							# decrementa cursor
+	lbu $t1,fileName($t0)				
+	bne $t1,'z',notLzw					
+	sb $t2,fileName($t0)				
+	addi $t0,$t0,-1						
+	lbu $t1,fileName($t0)				
+	bne $t1,'l',notLzw					
+	sb $t2,fileName($t0)				
+	addi $t0,$t0,-1						
+	lbu $t1,fileName($t0)				
+	bne $t1,'.',notLzw					
+	sb $t2,fileName($t0)				
 	j isLzw
 notLzw:	move $a0,$s1
-	jal closeFile 		#fecha arquivo pois nao eh lzw
+	jal closeFile 							# fecha arquivo pois nao eh lzw
 	la $a0,strNotLzw
-	jal printStr		#imprime string de erro
+	jal printStr							# imprime string de erro
 	j loopM
-isLzw:	la $a0,fileName		#prepara para criar arquivo de decodificação
-	li $a1,1		# flag = 1, arquivo para gravacao
-	jal openFile		#flag: 0=read-only, 1=write-only,9=write-only with create and append	#$a0 = enderecoNome, $a1=flag
-	bgtz $v0,contDec1	#continua se conseguiu abrir
+isLzw:	la $a0,fileName						# prepara para criar arquivo de decodificação
+	li $a1,1								# flag = 1, arquivo para gravacao
+	jal openFile							# flag: 0=read-only, 1=write-only,9=write-only with create and append	#$a0 = enderecoNome, $a1=flag
+	bgtz $v0,contDec1						# continua se conseguiu abrir
 	la $a0,strOpenDecFailed	
-	jal printStr		#imprime mensagem de falha
+	jal printStr							# imprime mensagem de falha
 	move $a0,$s1
-	jal closeFile		#fecha arquivo de decodificacao
-	j loopM			#volta ao loop do menu
-contDec1:#le primeiro byte e grava valor em $s0 (o valor primeiro byte é o numero de bits usado para codificar a tabela)
+	jal closeFile							# fecha arquivo de decodificacao
+	j loopM									# volta ao loop do menu
+# le primeiro byte e grava valor em $s0
+# (o valor primeiro byte é o numero de 
+# bits usado para codificar a tabela)
+contDec1:									
 	la $a0,strUncompressing
 	jal printStr
-	move $s2,$v0		# salva em $s2 o descritor do arquivo de saida
-	move $a0,$s1		# descritor do arquivo a ser descomprimido
+	move $s2,$v0							# salva em $s2 o descritor do arquivo de saida
+	move $a0,$s1							# descritor do arquivo a ser descomprimido
 	li $t8,0
-	jal readCharFromFile	# se chama readCharFromFile mas na verdade le um byte mesmo
-	move $s0,$v0		# salva qtdd de bits usada na codificacao do dicionario em $s0
-	#carrega um numero de elementos da tabela e coloca no buffer
-	#calcula numero de bytes a serem carregados
-	#vao ser tipo oito elementos, entao tenho que carregar ($s0 + 8) bytes ne?
-	#calcula $s0+8
-loopArqD:addi $s3,$s0,8	#$s3 contem o numero de elementos a serem lidos
-	#carrega $s0 + 8 bytes no buffer
-	move $a0,$s1		#$a0 = descritor do arquivo a ser decodificado
-	la $a1,tempBuffer	# carregará no buffer
-	move $a2,$s3		# numero de caracteres a ler ($s0 + 8)				
-	jal readBytesFromFile	#$a0 = descritor, $a1 = buffer, $a2 = numero de caracteres a ler
-	#beq $v0,0,cleanBf	#$V0 = 1 SE FIM DE ARQUIVO!!! (FAZER ALGO A RESPEITO?)
-	li $s4,0	#zera cursor do buffer
-loopBufD:#repete o codigo abaixo ate que se tenha lido todo o buffer (ou seja, repete o codigo abaixo oito vezes)
+	jal readCharFromFile					# se chama readCharFromFile mas na verdade le um byte mesmo
+	move $s0,$v0							# salva qtdd de bits usada na codificacao do dicionario em $s0
+	# carrega um numero de elementos da tabela e coloca no buffer
+	# calcula numero de bytes a serem carregados
+	# vao ser tipo oito elementos, entao tenho que carregar ($s0 + 8) bytes ne?
+	# calcula $s0+8
+loopArqD:addi $s3,$s0,8						# $s3 contem o numero de elementos a serem lidos
+	# carrega $s0 + 8 bytes no buffer
+	move $a0,$s1							# $a0 = descritor do arquivo a ser decodificado
+	la $a1,tempBuffer						# carregará no buffer
+	move $a2,$s3							# numero de caracteres a ler ($s0 + 8)				
+	jal readBytesFromFile					# $a0 = descritor, $a1 = buffer, $a2 = numero de caracteres a ler
+	li $s4,0								# zera cursor do buffer
+loopBufD:									# repete o codigo abaixo ate que se tenha lido todo o buffer (ou seja, repete o codigo abaixo oito vezes)
 	# le codigo e salva em $s5
 	move $a0,$s0
-	move $a1,$s4	# cursor
+	move $a1,$s4							# cursor
 	la $a2,tempBuffer
-	jal getDataBit		#tamanho T(em bits)=$a0 no n-ésimo bit P=$a1 a partir do endereco Po=$a2 e salva em $v0
-	addi $s5,$v0,0x100	#grava codigo atual em $s5 ()
-	add $s4,$s4,$s0	#incrementa cursor na quantidade de bits usada na tabela
-	#le caractere e salva em $s6
-	li $a0,8	#le caractere
-	move $a1,$s4	#cursor
+	jal getDataBit							# tamanho T(em bits)=$a0 no n-ésimo bit P=$a1 a partir do endereco Po=$a2 e salva em $v0
+	addi $s5,$v0,0x100						# grava codigo atual em $s5 ()
+	add $s4,$s4,$s0							# incrementa cursor na quantidade de bits usada na tabela
+	# le caractere e salva em $s6
+	li $a0,8								# le caractere
+	move $a1,$s4							# cursor
 	la $a2,tempBuffer
-	jal getDataBit	#tamanho T(em bits)=$a0 no n-ésimo bit P=$a1 a partir do endereco Po=$a2 e salva em $v0
+	jal getDataBit							# tamanho T(em bits)=$a0 no n-ésimo bit P=$a1 a partir do endereco Po=$a2 e salva em $v0
 	beq $v0,'\0',exitDec
-	move $s6,$v0	#grava caractere atual em $s6
-	addi $s4,$s4,8	#incrementa cursor na quantidade de bits de um caractere
-	#chama funcao para criar string de saida baseada no codigo $s5
-	move $a0,$s5		#$a0=$s5, codigo
-	jal getStrFromCode	#$v0 = cursor ao final da string (ou tamanho da string)
-	#adiciona o caractere ($s6) ao final da string
+	move $s6,$v0							# grava caractere atual em $s6
+	addi $s4,$s4,8							# incrementa cursor na quantidade de bits de um caractere
+	# chama funcao para criar string de saida baseada no codigo $s5
+	move $a0,$s5							# $a0=$s5, codigo
+	jal getStrFromCode						# $v0 = cursor ao final da string (ou tamanho da string)
+	# adiciona o caractere ($s6) ao final da string
 	sb $s6,string($v0)
-	addi $v0,$v0,1		#incrementa posicao do final da string
-	#DEBUG
+	addi $v0,$v0,1							# incrementa posicao do final da string
+	# DEBUG
 	li $t0,'\0'
 	sb $t0,string($v0)
-	#/DEBUG
-	#verifica se cabe na tabela. (nº_elem_da_tabela + str_size + 1)*BIT_SIZE, e isso deve ser menor que TABLE_SIZE*8.(numero de bits na tabela)
+	# /DEBUG
+	# verifica se cabe na tabela. (nº_elem_da_tabela + str_size + 1)*BIT_SIZE, e isso deve ser menor que TABLE_SIZE*8.(numero de bits na tabela)
 	bnez $t8,exLTD
-	add $t0,$t9,$v0		#num_elem_na_tabela + str_size
-	#addi $t0,$t0,1		#num_elem_na_tabela + str_size + 1
-	mul $t0,$t0,BIT_SIZE	#(num_elem_na_tabela + str_size + 1)*BIT_SIZE
+	add $t0,$t9,$v0							# num_elem_na_tabela + str_size
+	# addi $t0,$t0,1							# num_elem_na_tabela + str_size + 1
+	mul $t0,$t0,BIT_SIZE					# (num_elem_na_tabela + str_size + 1)*BIT_SIZE
 	li $t1,TABLE_SIZE
-	mul $t1,$t1,8		#tamanho maximo da tabela	 em bits
-	sle $t8,$t1,$t0		#verdadeiro se nao couber na tabela
+	mul $t1,$t1,8							# tamanho maximo da tabela	 em bits
+	sle $t8,$t1,$t0							# verdadeiro se nao couber na tabela
 	bnez $t8,exLTD
-	#adiciona codigo novo na tabela
+	# adiciona codigo novo na tabela
 	addi $a3,$s7,0x101		#$a3 = codigo atual, o codigo eh o numero de iteracao atual mais 0x101
-	move $a1,$t9		#posicao em que sera salvo
-	la $a2, tabela		#endereco
+	move $a1,$t9							# posicao em que sera salvo
+	la $a2, tabela							# endereco
 	jal setData32
-	addi $t9,$t9,1		#incrementa cursor da tabela
+	addi $t9,$t9,1							# incrementa cursor da tabela
 	#copia string na tabela
 	li $t0,0
 loopTD:	beq $t0,$v0,exLTD	# sai se tiver atingido fim da string (exit loop da tabela da decodificacao)
-	lbu $a3,string($t0)	#carrega da string
-	move $a1,$t9		#posicao em que sera salvo
-	la $a2,tabela		#endereco
-	addi $sp,$sp,-4	#empilha $t0
+	lbu $a3,string($t0)						# carrega da string
+	move $a1,$t9							# posicao em que sera salvo
+	la $a2,tabela							# endereco
+	addi $sp,$sp,-4							# empilha $t0
 	sb $t0,0($sp)
 	jal setData32
 	lbu $t0,0($sp)
-	addi $sp,$sp,4	#desempilha $t0
-	addi $t9,$t9,1		#incrementa cursor da tabela
-	addi $t0,$t0,1		#incrementa cursor da string
-	j loopTD		#retorna ao loopTD (loop da Tabela da Decodificacao)
-exLTD:	#escreve string no output
+	addi $sp,$sp,4							# desempilha $t0
+	addi $t9,$t9,1							# incrementa cursor da tabela
+	addi $t0,$t0,1							# incrementa cursor da string
+	j loopTD								# retorna ao loopTD (loop da Tabela da Decodificacao)
+exLTD:	# escreve string no output
 	la $a1,string
 	move $a0,$s2
 	jal appendStrToFile
-	#escreve string na saida e limpa string
-	addi $s7,$s7,1		#contador de loops do buffer
-	andi $t0,$s7,0x0000007	#mascara (sera zero se for multiplo de oito, observe que eh ANDI e nao ADDI)
-	beq $t0,$zero,loopArqD	#salta para loop do arquivo se ja houveram oito loops de buffer
-	j loopBufD		#se nao, volta para o loop de buffer
-exitDec:#fecha arquivos
+	# escreve string na saida e limpa string
+	addi $s7,$s7,1							# contador de loops do buffer
+	andi $t0,$s7,0x0000007					# mascara (sera zero se for multiplo de oito, observe que eh ANDI e nao ADDI)
+	beq $t0,$zero,loopArqD					# salta para loop do arquivo se ja houveram oito loops de buffer
+	j loopBufD								# se nao, volta para o loop de buffer
+exitDec:# fecha arquivos
 	move $a0,$s1
 	jal closeFile
 	move $a0,$2
 	jal closeFile
-	#cria arquivo do docionario
+	# cria arquivo do docionario
 	la $a0,strCreatingDict
-	jal printStr		#imprime string de criacao do dicionario
+	jal printStr
 	jal createDictFile
-	#mensagem de fim
+	# mensagem de fim
 	la $a0,strDone
 	jal printStr
 	j exit
@@ -568,78 +582,77 @@ exitDec:#fecha arquivos
 createDictFile:
 	addi $sp,$sp,-12
 	sw $ra,8($sp)
-	sw $s1,4($sp)	#cursor do dicionario
-	sw $s0,0($sp)	#descritor do arquivo de saida
-	#cria arquivo
+	sw $s1,4($sp)								# cursor do dicionario
+	sw $s0,0($sp)								# descritor do arquivo de saida
+	# cria arquivo
 	la $a0,DictionaryName
-	li $a1,1	#flag 1 = write only
+	li $a1,1									# flag 1 = write only
 	jal openFile
-	move $s0,$v0	#descritor do arquivo
-	li $s1,0	#cursor da tabela (dicionario)
-	#loop
+	move $s0,$v0								# descritor do arquivo
+	li $s1,0									# cursor da tabela (dicionario)
 loopCDF:move $a1,$s1
 	la $a2,tabela
-	jal getData32	#le dado da tabela
-	addi $s1,$s1,1	#incrementa cursor para prox loop
-	#verifica se acabou
+	jal getData32	
+	addi $s1,$s1,1								# incrementa cursor para prox loop
+	# verifica se acabou
 	beq $v0,0,contCDF
-	#verifica se eh caractere
-	blt $v0,0x100,isCharCDF	#salta se for caractere
+	# verifica se eh caractere
+	blt $v0,0x100,isCharCDF						# salta se for caractere
 	move $a0,$s0
 	la $a1,strTableSeparator
 	jal appendStrToFile
 	j loopCDF
-isCharCDF:#adiciona caractere ao buffer
+isCharCDF:										# adiciona caractere ao buffer
 	sb $v0,tempBuffer
-	#escreve caractere do buffer no arquivo
+	# escreve caractere do buffer no arquivo
 	move $a0,$s0
 	la $a1,tempBuffer
 	li $a2,1
-	jal appendBytesToFile #$a0 = descritor, $a1 = endereco do vetor a ser escrito, $a2 = quantidade de bytes a serem escritos
+	jal appendBytesToFile 						# $a0 = descritor, $a1 = endereco do vetor a ser escrito, $a2 = quantidade de bytes a serem escritos
 	j loopCDF
-contCDF:#fecha arquivo do dicionario
+contCDF:										# fecha arquivo do dicionario
 	move $a0,$s0
 	jal closeFile
-	#desempilha
+	# desempilha
 	lw $s0,0($sp)
 	lw $s1,4($sp)
 	lw $ra,8($sp)
 	addi $sp,$sp,12
 	jr $ra
 
-getStrFromCode:	#a0 = codigo
+getStrFromCode:								# a0 = codigo
 	li $v0,0
-	beq $a0,0x100,exitGSFC	#sai se o codigo for nulo (=0x100)
-	#empilha
+	beq $a0,0x100,exitGSFC					# sai se o codigo for nulo (=0x100)
+	# empilha
 	addi $sp,$sp,-12 
 	sw $ra,8($sp)
 	sw $a0,4($sp)
 	sw $s0,0($sp)
-	#salva
+	# salva
 	move $s0,$a0
-	#procura o codigo na tabela
-	li $a1,0		#posicao em que o dado sera lido
+	# procura o codigo na tabela
+	li $a1,0								# posicao em que o dado sera lido
 loop1GSFC:
-	la $a2,tabela		#endereco
+	la $a2,tabela							# endereco
 	jal getData32
-	addi $a1,$a1,1		#incrementa cursor
+	addi $a1,$a1,1							# incrementa cursor
 	beq $v0,$s0,cont1GSFC
 	j loop1GSFC
-cont1GSFC:#zera cursor da string
+cont1GSFC:									# zera cursor da string
 	li $s0,0		
-loop2GSFC:#copia string da tabela na string da string (what)
-	la $a2,tabela		#endereco
-	jal getData32		#pega dado da tabela
-	li $t0,0x100		#verifica se é codigo
-	bge $v0,$t0,cont2GSFC	#sai se a string tiver acabado
-	beqz $v0,cont2GSFC	#sai se a string tiver acabado (no ultimo elemento é zero)
-	sb $v0,string($s0)	#salva caractere na string
-	addi $a1,$a1,1		#incrementa cursor da tabela
-	addi $s0,$s0,1		#incrementa cursor da string
+loop2GSFC:									# copia string da tabela na string da string (what)
+	la $a2,tabela							# endereco
+	jal getData32							# pega dado da tabela
+	li $t0,0x100							# verifica se é codigo
+	bge $v0,$t0,cont2GSFC					# sai se a string tiver acabado
+	beqz $v0,cont2GSFC						# sai se a string tiver acabado (no ultimo elemento é zero)
+	sb $v0,string($s0)						# salva caractere na string
+	addi $a1,$a1,1							# incrementa cursor da tabela
+	addi $s0,$s0,1							# incrementa cursor da string
 	j loop2GSFC
-cont2GSFC:#finaliza
+cont2GSFC:									# finaliza
 	addi $v0,$s0,0	
-	#desempilha
+	# desempilha
 	lw $s0,0($sp)
 	lw $a0,4($sp)
 	lw $ra,8($sp)
@@ -650,95 +663,99 @@ exitGSFC:jr $ra
 #	  /   DATA_HANDLERS     /
 #	/______________________/
 
-setData32: #salva dado K=$a3 de tamanho 32 bits (word) na n-esima posicao P=$a1 a partir to endereco Po=$a2
+# salva dado K=$a3 de tamanho 32 bits
+# (word) na n-esima posicao P=$a1 a 
+# partir to endereco Po=$a2
+
+setData32: 							
 	li $t1,4
-	mul $t0,$a1,$t1		#$a1 = posicao relativa
-	add $t3,$a2,$t0	#posicao absoluta
+	mul $t0,$a1,$t1		# $a1 = posicao relativa
+	add $t3,$a2,$t0		# posicao absoluta
 	sw $a3,0($t3)
 	jr $ra
 	
-getData32 :#pega dado de tamanho 32 bits (word) na n-esima posicao P=$a1 a partir to endereco Po=$a2
+getData32 :   					# pega dado de tamanho 32 bits (word) na n-esima posicao P=$a1 a partir to endereco Po=$a2
 	li $t1,4
-	mul $t0,$a1,$t1		#posicao relativa
-	add $t3,$a2,$t0	#posicao absoluta
+	mul $t0,$a1,$t1				# posicao relativa
+	add $t3,$a2,$t0				# posicao absoluta
 	lw $v0,0($t3)
 	jr $ra
 
-setDataBit: #salva dado K=$a3 de tamanho T(em bits)=$a0 no n-esimo bit P=$a1 a partir to endereco Po=$a2
-	addi $sp,$sp,-16	# cria espaço apara 4 variaveis na pilha
-	sw $s0,12($sp)		# empilha variaveis
-	sw $s1,8($sp)		#
-	sw $s2,4($sp)		#
-	sw $s3,0($sp)		# 
-	#inicia algoritmo
-	addi $t1,$zero,8	# $t1 = bytesize
+setDataBit: 					# salva dado K=$a3 de tamanho T(em bits)=$a0 no n-esimo bit P=$a1 a partir to endereco Po=$a2
+	addi $sp,$sp,-16			# cria espaço apara 4 variaveis na pilha
+	sw $s0,12($sp)				# empilha variaveis
+	sw $s1,8($sp)
+	sw $s2,4($sp)
+	sw $s3,0($sp) 
+	# inicia algoritmo
+	addi $t1,$zero,8				# $t1 = bytesize
 	div $a1,$t1
-	mflo $t1 		#quociente, eh a posicao relativa do primeiro byte que se quer salvar
-	mfhi $s1 		#resto, sera usado no calculo do shift
-	add $s0,$t1,$a2 	# $t0 eh o endereco real do primeiro byte ($t1 = posRelativa + posInicio), $s0 sera usado mais tarde para reescrever
+	mflo $t1 						# quociente, eh a posicao relativa do primeiro byte que se quer salvar
+	mfhi $s1 						# resto, sera usado no calculo do shift
+	add $s0,$t1,$a2 				# $t0 eh o endereco real do primeiro byte ($t1 = posRelativa + posInicio), $s0 sera usado mais tarde para reescrever
 	lbu $t0,($s0)
-	#carrega segundo byte
-	addi $s2,$s0,1		# $t1 = posicao do byte anterior mais um (relativa)
+	# carrega segundo byte
+	addi $s2,$s0,1					# $t1 = posicao do byte anterior mais um (relativa)
 	lbu $t1,($s2)		
 	sll $t0,$t0,8		
-	or $s3,$t0,$t1		# $s3 contem os dois bytes que contem a posicao da dado a ser escrita
-	#calculando a quantidade de shift para esquerda: shamt = 2*bytesize - tamanho_dado - resto
+	or $s3,$t0,$t1					# $s3 contem os dois bytes que contem a posicao da dado a ser escrita
+	# calculando a quantidade de shift para esquerda: shamt = 2*bytesize - tamanho_dado - resto
 	addi $t0,$zero,16
 	sub $t0,$t0,$a0
-	sub $s1,$t0,$s1 	# $s1 = resultado (shamt)
-	#atribui valores dos bits
-	addi $t0,$zero,0xffffffff	#prepara mascara
-	sllv $t0,$t0,$a0	#mascara pronta, mas nao posicionada
+	sub $s1,$t0,$s1 				# $s1 = resultado (shamt)
+	# atribui valores dos bits
+	addi $t0,$zero,0xffffffff		# prepara mascara
+	sllv $t0,$t0,$a0				# mascara pronta, mas nao posicionada
 	not $t0,$t0 		
-	sllv $t0,$t0,$s1	#posiciona mascara
-	not $t0,$t0		#mascara no formato correto
-	and $t0,$s3,$t0		#conteudo a ser escrito liberado (nota pessoal:conteúdo limpo)
-	sllv $t1,$a3,$s1	#posiciona conteudo
-	or $t0,$t1,$t0		#$t0 contem os dois bytes prontos para serem reescritos na memoria
-	#reescreve na memoria
+	sllv $t0,$t0,$s1				# posiciona mascara
+	not $t0,$t0						# mascara no formato correto
+	and $t0,$s3,$t0					# conteudo a ser escrito liberado (nota pessoal:conteúdo limpo)
+	sllv $t1,$a3,$s1				# posiciona conteudo
+	or $t0,$t1,$t0					# $t0 contem os dois bytes prontos para serem reescritos na memoria
+	# reescreve na memoria
 	sb $t0,($s2)
 	srl $t0,$t0,8
 	sb $t0,($s0)
 	# desempilha tudo
-	lw $s3,0($sp)	#
-	lw $s2,4($sp)	#
-	lw $s1,8($sp)	#
-	lw $s0,12($sp)	#
-	addi $sp,$sp,16 # desempilha variaveis
+	lw $s3,0($sp)	
+	lw $s2,4($sp)	
+	lw $s1,8($sp)	
+	lw $s0,12($sp)	
+	addi $sp,$sp,16 				# desempilha variaveis
 	jr $ra
 
-getDataBit: #pega dado de tamanho T(em bits)=$a0 no n-ésimo bit P=$a1 a partir do endereco Po=$a2 e salva em $v0
-	addi $sp,$sp,-12# cria espaço apara 4 variaveis na pilha
-	sw $s0,8($sp)	# empilha variaveis
-	sw $s1,4($sp)	#
-	sw $s2,0($sp)	#
-	#organiza inputs
-	move $s1,$a2 		# $s1 = posInicial
-	li $t1,8		# $t1 = bytesize
+getDataBit: 						# pega dado de tamanho T(em bits)=$a0 no n-ésimo bit P=$a1 a partir do endereco Po=$a2 e salva em $v0
+	addi $sp,$sp,-12				# cria espaço apara 4 variaveis na pilha
+	sw $s0,8($sp)					# empilha variaveis
+	sw $s1,4($sp)
+	sw $s2,0($sp)
+	# organiza inputs
+	move $s1,$a2 					# $s1 = posInicial
+	li $t1,8						# $t1 = bytesize
 	div $a1,$t1
-	#agora preciso dar load no bite da divisao e no seguinte, concatenar e depois fazer o shift
-	mflo $t2 		#quociente, eh a posicao relativa do primeiro byte que se quer carregar
-	mfhi $s0 		#resto, sera usado no calculo do shift
-	#carrega primeiro byte
-	add $t0,$t2,$s1 	# $t0 eh o endereco real do primeiro byte ($t0 = posRelativa + posInicio)
+	# agora preciso dar load no bite da divisao e no seguinte, concatenar e depois fazer o shift
+	mflo $t2 						# quociente, eh a posicao relativa do primeiro byte que se quer carregar
+	mfhi $s0 						# resto, sera usado no calculo do shift
+	# carrega primeiro byte
+	add $t0,$t2,$s1 				# $t0 eh o endereco real do primeiro byte ($t0 = posRelativa + posInicio)
 	lbu $t3,($t0)
-	#carrega segundo byte
-	addi $t1,$t2,1		# $a0 = posicao do byte anterior mais um (relativa)
-	add $t1,$t1,$s1		# posicao absoluta (t1 = pos relativa + pos inicial)
+	# carrega segundo byte
+	addi $t1,$t2,1					# $a0 = posicao do byte anterior mais um (relativa)
+	add $t1,$t1,$s1					# posicao absoluta (t1 = pos relativa + pos inicial)
 	lbu $t1,($t1)		
 	sll $t3,$t3,8		
-	or $s2,$t3,$t1		# $s2 contem os dois bytes que contem o dado
-	#calculando a quantidade de shift para direita: shamt = 2*bytesize - tamanho_dado - resto
+	or $s2,$t3,$t1					# $s2 contem os dois bytes que contem o dado
+	# calculando a quantidade de shift para direita: shamt = 2*bytesize - tamanho_dado - resto
 	addi $t0,$zero,16
 	sub $t0,$t0,$a0
-	sub $t0,$t0,$s0 # $t0 = resultado
-	srlv $s2,$s2,$t0 # shifta conteudo
-	#prepara mascara (invertida) para remover lixo a esquerda
+	sub $t0,$t0,$s0 				# $t0 = resultado
+	srlv $s2,$s2,$t0 				# shifta conteudo
+	# prepara mascara (invertida) para remover lixo a esquerda
 	addi $t0,$zero,0xffffffff 
-	sllv $t0,$t0,$a0 #ajusta a mascara para o tamanho do dado
-	not $t0,$t0 #desinverte a mascara
+	sllv $t0,$t0,$a0				# ajusta a mascara para o tamanho do dado
+	not $t0,$t0 					# desinverte a mascara
 	and $v0,$t0,$s2
-	#desempilha tudo
+	# desempilha tudo
 	lw $s2,0($sp)	#
 	lw $s1,4($sp)	#
 	lw $s0,8($sp)	#
@@ -749,88 +766,95 @@ getDataBit: #pega dado de tamanho T(em bits)=$a0 no n-ésimo bit P=$a1 a partir 
 #	  /   INPUT_HANDLERS    /
 #	/______________________/
 
-printStr:#$a0 = endereco da string
+# $a0 = endereco da string
+printStr:
 	li $v0,4
 	syscall
 	jr $ra
 
-printChar: #$a0 = caractere
+# $a0 = caractere
+printChar: 
 	li $v0,11
 	syscall
 	jr $ra
-
-readChar:#le um caractere do input
+	
+# le um caractere do input
+readChar:
 	li $v0,12
 	syscall
 	jr $ra
 
-readStr:#a0 = endereco a ser escrito
-	addi $sp,$sp,-8 #empilha
+# a0 = endereco a ser escrito
+readStr:
+	addi $sp,$sp,-8 		# empilha
 	sw $a1,4($sp)
 	sw $v0,0($sp)
-
 	li $v0,8
-	li $a1,0x100	#max 128 caracteres
+	li $a1,0x100			# max 128 caracteres
 	syscall
 	
-	lw $v0,0($sp)	#desempilha
+	lw $v0,0($sp)			# desempilha
 	lw $a1,4($sp)
 	addi $sp,$sp,8
 	jr $ra
 
-openFile: #flag: 0=read-only, 1=write-only,9=write-only with create and append	#$a0 = enderecoNome, $a1=flag
+openFile: 
+	# flag: 0=read-only, 1=write-only,9=write-only 
+	# with create and append	#$a0 = enderecoNome, $a1=flag
 	addi $sp,$sp,-4 #empilha
 	sw $a0,0($sp)
-	#remove \n do final do nome
-	li $t0,0		#cursor
-loopOF:	la $t1,0($a0)		#endereco de origem
-	add $t1,$t1,$t0		#$t1=endereco de origem + cursor
-	lbu $t1,($t1)		#$t1=char da origem
-	beq $t1,'\n',contOF	#finaliza se for nova linha
-	beq $t1,'\0',contOF	#finaliza se for fim
+	# remove \n do final do nome
+	li $t0,0							# cursor
+loopOF:	la $t1,0($a0)					# endereco de origem
+	add $t1,$t1,$t0						# $t1=endereco de origem + cursor
+	lbu $t1,($t1)						# $t1=char da origem
+	beq $t1,'\n',contOF					# finaliza se for nova linha
+	beq $t1,'\0',contOF					# finaliza se for fim
 	la $t2,tempBuffer
 	add $t2,$t0,$t2
 	sb $t1,($t2)
-	addi $t0,$t0,1	#atualiza cursor para prox loop
+	addi $t0,$t0,1						# atualiza cursor para prox loop
 	j loopOF
-contOF:	#coloca terminador nulo ao fim do nome do arquivo
+contOF:									# coloca terminador nulo ao fim do nome do arquivo
 	addi $t2,$t2,1
-	li $t1,'\0'	#adiciona caractere nulo ao final
+	li $t1,'\0'							# adiciona caractere nulo ao final
 	sb $t1,($t2)
 	#abre o arquivo propriamente
 	la $a0,tempBuffer
-	li $a2,0	#$a1 eh ignorado
+	li $a2,0							# $a1 eh ignorado
 	li $v0,13
 	syscall
 	#desempilha
 	lw $a0,0($sp)
-	addi $sp,$sp,4	#desempilha
-	jr $ra		#fim
+	addi $sp,$sp,4						# desempilha
+	jr $ra								# fim
 
 closeFile: #$a0 = descritor
 	li $v0,16
 	syscall
 	jr $ra
 
-readCharFromFile:		#$a0 = descritor do arquivo
+readCharFromFile:						# $a0 = descritor do arquivo
 	la $a1,tempBuffer
 	li $a2,1
 	li $v0,14
 	syscall
 	move $t1,$v0
 	lbu $v0,tempBuffer($zero)
-	bgtz $t1,fimRCFF	#atribui o valor NULL se nao tiver lido nenhum caractere
+	bgtz $t1,fimRCFF					# atribui o valor NULL se nao tiver lido nenhum caractere
 	li $v0 '\0'
 fimRCFF:jr $ra
 
-appendBytesToFile: 	#$a0 = descritor, $a1 = endereco do vetor a ser escrito, $a2 = quantidade de bytes a serem escritos
+appendBytesToFile: 						
+# $a0 = descritor, $a1 = endereco do vetor a ser escrito, $a2 = quantidade de bytes a serem escritos
 	li $v0,15
 	syscall
 	jr $ra		#$retorno: v0 = numero de bytes escritos
 
-appendStrToFile: #$a0 = descritor, $a1 = endereco do vetor a ser escrito
-	move $t0,$a1	#endereco
-	li $a2,0	#cursor
+# $a0 = descritor, $a1 = endereco do vetor a ser escrito
+appendStrToFile:
+	move $t0,$a1						# endereco
+	li $a2,0							# cursor
 loopASTF:lbu $t1,0($t0)
 	beq $t1,'\0',lEndASTF
 	addi $t0,$t0,1
@@ -838,47 +862,47 @@ loopASTF:lbu $t1,0($t0)
 	j loopASTF
 lEndASTF:li $v0,15
 	syscall
-	jr $ra		#$retorno: v0 = numero de bytes escritos
+	jr $ra								# $retorno: v0 = numero de bytes escritos
 	
 getInputFile:#$a0 = endereco da string a ser printada antes de abrir o arquivo
-	addi $sp,$sp,-8 #empilha
+	addi $sp,$sp,-8		# empilha
 	sw $s0,4($sp)
 	sw $ra,0($sp)
-	#imprime string em $a0 (setada pelo chamador)
+	# imprime string em $a0 (setada pelo chamador)
 	jal printStr
-	la $a0,fileName		#string a ser escrita
-	jal readStr		#le string (le nome do arquivo)
-	la $a0,fileName		#endereco do nome do arquivo
-	li $a1,0		#flag
-	jal openFile		#abre arquivo
-	bgez $v0,contGF		#verifica se o arquivo foi aberto corretamente
-	la $a0,strInvalid	#carrega endereco da msg de erro
-	jal printStr		#printa mensagem de erro
-	li $v0,-1		#codigo de erro de arquivo
+	la $a0,fileName						# string a ser escrita
+	jal readStr							# le string (le nome do arquivo)
+	la $a0,fileName						# endereco do nome do arquivo
+	li $a1,0							# flag
+	jal openFile						# abre arquivo
+	bgez $v0,contGF						# verifica se o arquivo foi aberto corretamente
+	la $a0,strInvalid					# carrega endereco da msg de erro
+	jal printStr						# printa mensagem de erro
+	li $v0,-1							# codigo de erro de arquivo
 	lw $ra,0($sp)
 	lw $s0,4($sp)
-	addi $sp,$sp,8 		#desempilha
-	j loopM			#volta para o menu
+	addi $sp,$sp,8 						# desempilha
+	j loopM								# volta para o menu
 contGF: lw $ra,0($sp)
 	lw $s0,4($sp)
-	addi $sp,$sp,8 #desempilha
-	jr $ra		#fim getFile
+	addi $sp,$sp,8 						# desempilha
+	jr $ra								# fim getFile
 	
 readBytesFromFile:	#$a0 = descritor, $a1 = buffer, $a2 = numero de caracteres a ler
 	li $v0,14
 	syscall
-	move $t3,$v0		#$t3 é o numero de caracteres escritos
-	li $v0,0		# $v0 = 0 se deu tudo certo (altera para um se satisfizer condicao abaixo)
-	beq $t3,$a2,exitRBFF	#sai se deu tudo certo
-	#escreve zeros nos ultimos bytes e sai
+	move $t3,$v0						# $t3 é o numero de caracteres escritos
+	li $v0,0							# $v0 = 0 se deu tudo certo (altera para um se satisfizer condicao abaixo)
+	beq $t3,$a2,exitRBFF				# sai se deu tudo certo
+	# escreve zeros nos ultimos bytes e sai
 	li $v0,1
-	subu $t0,$a2,$t3	#numero de bytes nao escritos
-	addu $t1,$a1,$t3	#posicao do primeiro byte nao escrito
+	subu $t0,$a2,$t3					# numero de bytes nao escritos
+	addu $t1,$a1,$t3					# posicao do primeiro byte nao escrito
 loopRBFF:li $t2,'\0'
-	sb $t2,($t1)		#escreve '\0' sobre o byte posicionado
-	addiu $t1,$t1,1		#incrementa posicao do cursor
-	addiu $t0,$t0,-1	#decrementa $t0 
-	bnez $t0,loopRBFF	#verifica se zero,volta ao loop se nao for
+	sb $t2,($t1)						# escreve '\0' sobre o byte posicionado
+	addiu $t1,$t1,1						# incrementa posicao do cursor
+	addiu $t0,$t0,-1					# decrementa $t0 
+	bnez $t0,loopRBFF					# verifica se zero,volta ao loop se nao for
 exitRBFF:jr $ra
 
 exit: #FIM!
